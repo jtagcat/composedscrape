@@ -21,7 +21,7 @@ func NewScraper() *Scraper {
 }
 
 type Scraper struct {
-	Cookies []*network.CookieParam
+	Cookies []*network.CookieParam // required: Name, Value, Domain: ".ope.ee"
 
 	ctx context.Context
 }
@@ -38,7 +38,9 @@ func (s *Scraper) Get(url, sel string, by func(*chromedp.Selector)) (nodes []*cd
 	}
 
 	if len(s.Cookies) > 0 {
-		actions = append([]chromedp.Action{network.SetCookies(s.Cookies)}, actions...)
+		actions = append(
+			[]chromedp.Action{network.SetCookies(s.Cookies)},
+			actions...)
 	}
 
 	if err := chromedp.Run(ctx, actions...); err != nil {
