@@ -3,7 +3,6 @@ package composedscrape_test
 import (
 	"testing"
 
-	"github.com/chromedp/chromedp"
 	cs "github.com/jtagcat/composedscrape"
 	"github.com/stretchr/testify/assert"
 )
@@ -11,7 +10,7 @@ import (
 func TestGet(t *testing.T) {
 	s := cs.NewScraper()
 	// s.Executable = "chromium"
-	nodes, err := s.Get("https://www.c7.ee/", "document", chromedp.ByJSPath)
+	nodes, err := s.Get("https://www.c7.ee/", "document")
 	assert.Nil(t, err)
 	print(nodes)
 	panic("")

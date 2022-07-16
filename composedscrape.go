@@ -2,8 +2,9 @@ package composedscrape
 
 import (
 	"context"
+	"strings"
 
-	"github.com/chromedp/cdproto/cdp"
+	"github.com/PuerkitoBio/goquery"
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/chromedp"
 )
@@ -26,15 +27,17 @@ type Scraper struct {
 	ctx context.Context
 }
 
-// startFunc should return one (non-slice) object
-func (s *Scraper) Get(url, sel string, by func(*chromedp.Selector)) (nodes []*cdp.Node, _ error) {
+// sel: goquery selector
+func (s *Scraper) Get(url, sel string) (*goquery.Selection, error) { // by func(*chromedp.Selector)
 	ctx, cancel := chromedp.NewContext(s.ctx)
 	defer cancel()
 
+	var gotHtml string
 	actions := []chromedp.Action{
 		chromedp.Navigate(url),
 		chromedp.WaitReady(":root"),
-		chromedp.Nodes(sel, &nodes, by),
+		chromedp.OuterHTML("document", &gotHtml, chromedp.ByJSPath),
+		// chromedp.Nodes(sel, &nodes, by),
 	}
 
 	if len(s.Cookies) > 0 {
@@ -46,5 +49,12 @@ func (s *Scraper) Get(url, sel string, by func(*chromedp.Selector)) (nodes []*cd
 	if err := chromedp.Run(ctx, actions...); err != nil {
 		return nil, err
 	}
-	return nodes, nil
+
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(gotHtml))
+	if err != nil {
+		return nil, err
+	}
+
+	// return nodes, nil
+	return doc.Find(sel), nil
 }

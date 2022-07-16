@@ -3,14 +3,10 @@ package composedscrape
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/url"
 	"os"
 	"path"
 	"strings"
-
-	"github.com/PuerkitoBio/goquery"
-	"github.com/chromedp/cdproto/cdp"
 )
 
 // writes object to file as json
@@ -61,12 +57,12 @@ func UrlJoin(baseURL string, paths ...string) (string, error) {
 // Converts cdp.Node to goquery and filters children.
 //
 // panics: valid HTML almost always remains valid HTML
-func CdpFilterChildren(node *cdp.Node, sel string) *goquery.Selection {
-	doc, err := goquery.NewDocumentFromReader(strings.NewReader(
-		node.Dump("", "", false)))
-	if err != nil {
-		panic(fmt.Errorf("converting cdp.Node (%v) to goquery Doc: %e", node, err))
-	}
+// func CdpFilterChildren(node *cdp.Node, sel string) *goquery.Selection {
+// 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(
+// 		node.Dump("", "", false)))
+// 	if err != nil {
+// 		panic(fmt.Errorf("converting cdp.Node (%v) to goquery Doc: %e", node, err))
+// 	}
 
-	return doc.Selection.ChildrenFiltered(sel)
-}
+// 	return doc.Selection.ChildrenFiltered(sel)
+// }
