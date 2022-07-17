@@ -10,8 +10,8 @@ import (
 func TestGet(t *testing.T) {
 	s := cs.NewScraper()
 	// s.Executable = "chromium"
-	nodes, err := s.Get("https://www.c7.ee/", "document")
+	nodes, _, err := s.Get("https://www.c7.ee/", "document")
 	assert.Nil(t, err)
 	print(nodes)
-	panic("")
+	panic("test not implemented")
 }

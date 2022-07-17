@@ -7,6 +7,8 @@ import (
 	"os"
 	"path"
 	"strings"
+
+	"github.com/PuerkitoBio/goquery"
 )
 
 // writes object to file as json
@@ -66,3 +68,11 @@ func UrlJoin(baseURL string, paths ...string) (string, error) {
 
 // 	return doc.Selection.ChildrenFiltered(sel)
 // }
+
+// let's play dumb (unavail/-exported newSingleSelection), redoing things for nth time already
+func RawEach(s *goquery.Selection) (a []*goquery.Selection) {
+	s.Each(func(_ int, s *goquery.Selection) {
+		a = append(a, s)
+	})
+	return a
+}

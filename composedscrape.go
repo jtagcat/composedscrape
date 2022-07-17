@@ -28,7 +28,7 @@ type Scraper struct {
 }
 
 // sel: goquery selector
-func (s *Scraper) Get(url, sel string) (*goquery.Selection, error) { // by func(*chromedp.Selector)
+func (s *Scraper) Get(url, sel string) (_ *goquery.Selection, newURL string, _ error) { // by func(*chromedp.Selector)
 	ctx, cancel := chromedp.NewContext(s.ctx)
 	defer cancel()
 
@@ -36,8 +36,10 @@ func (s *Scraper) Get(url, sel string) (*goquery.Selection, error) { // by func(
 	actions := []chromedp.Action{
 		chromedp.Navigate(url),
 		chromedp.WaitReady(":root"),
-		chromedp.OuterHTML("document", &gotHtml, chromedp.ByJSPath),
+		chromedp.OuterHTML(":root", &gotHtml),
+		// chromedp.InnerHTML("document", &gotHtml, chromedp.ByJSPath),
 		// chromedp.Nodes(sel, &nodes, by),
+		chromedp.Location(&newURL),
 	}
 
 	if len(s.Cookies) > 0 {
@@ -47,14 +49,14 @@ func (s *Scraper) Get(url, sel string) (*goquery.Selection, error) { // by func(
 	}
 
 	if err := chromedp.Run(ctx, actions...); err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(gotHtml))
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	// return nodes, nil
-	return doc.Find(sel), nil
+	return doc.Find(sel), newURL, nil
 }
