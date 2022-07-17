@@ -12,7 +12,7 @@ import (
 )
 
 // writes object to file as json
-func JsonToFile(filename string, object interface{}) error {
+func JsonToFile(filename, indent string, object interface{}) error {
 	f, err := os.Create(filename)
 	if err != nil {
 		return err
@@ -20,6 +20,8 @@ func JsonToFile(filename string, object interface{}) error {
 	defer f.Close()
 
 	je := json.NewEncoder(f)
+	je.SetIndent("", indent)
+
 	return je.Encode(object)
 }
 
