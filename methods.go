@@ -2,6 +2,10 @@ package composedscrape
 
 import (
 	"context"
+	"errors"
+	"io/ioutil"
+	"os"
+	"path"
 	"strings"
 	"time"
 
@@ -9,6 +13,7 @@ import (
 	"github.com/chromedp/cdproto/browser"
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/chromedp"
+	"github.com/google/uuid"
 )
 
 // sel: goquery selector
@@ -45,7 +50,8 @@ func (s *Scraper) Get(url, sel string) (_ *goquery.Selection, newURL string, _ e
 }
 
 // based on https://github.com/chromedp/examples/blob/3384adb2158f6df7e6a48458875a3a5f24aea0c3/download_file/main.go
-func (s *Scraper) DownloadFile(url, outdir string, timeout time.Duration) (suggested, filename, newURL string, _ error) {
+// BUG: github issues says 10 or 50 downloads per second is limit, no idea what happens when limit is reached though
+func (s *Scraper) DownloadFile(urlstr, outdir string, timeout time.Duration) (suggested, filename, newURL string, _ error) {
 	ctx, cancel := chromedp.NewContext(s.ctx)
 	defer cancel()
 
@@ -53,18 +59,32 @@ func (s *Scraper) DownloadFile(url, outdir string, timeout time.Duration) (sugge
 	ctx, cancel = context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	// handle download event
 	done := make(chan string, 1)
-	chromedp.ListenTarget(ctx, func(v interface{}) {
-		if ev, ok := v.(*browser.EventDownloadWillBegin); ok {
-			suggested = ev.SuggestedFilename
-		}
 
-		if ev, ok := v.(*browser.EventDownloadProgress); ok {
+	// handle download event
+	var requestID network.RequestID
+	chromedp.ListenTarget(ctx, func(v interface{}) {
+		switch ev := v.(type) {
+		// opt a: browser renders (png)
+		case *network.EventRequestWillBeSent:
+			if ev.Request.URL == urlstr {
+				requestID = ev.RequestID
+			}
+		case *network.EventLoadingFinished:
+			if ev.RequestID == requestID {
+				close(done)
+			}
+
+		// opt b: direct download
+		case *browser.EventDownloadWillBegin:
+			suggested = ev.SuggestedFilename
+
+		case *browser.EventDownloadProgress:
 			if ev.State == browser.DownloadProgressStateCompleted {
 				done <- ev.GUID
 				close(done)
 			}
+
 		}
 	})
 
@@ -72,7 +92,7 @@ func (s *Scraper) DownloadFile(url, outdir string, timeout time.Duration) (sugge
 		browser.SetDownloadBehavior(browser.SetDownloadBehaviorBehaviorAllowAndName).
 			WithDownloadPath(outdir).
 			WithEventsEnabled(true),
-		chromedp.Navigate(url),
+		chromedp.Navigate(urlstr),
 		chromedp.Location(&newURL),
 	}
 	if len(s.Cookies) > 0 {
@@ -89,6 +109,34 @@ func (s *Scraper) DownloadFile(url, outdir string, timeout time.Duration) (sugge
 	}
 
 	guid := <-done // blocks
+
+	if guid == "" { // opt a: browser rendered, not direct download
+		// emulate a guid manually
+		var guidPath string
+		for {
+			guid = uuid.New().String()
+			guidPath = path.Join(outdir, guid)
+			if _, err := os.Stat(guidPath); err != nil && !errors.Is(err, os.ErrNotExist) {
+				return "", "", "", err
+			} else if errors.Is(err, os.ErrNotExist) {
+				break
+			}
+		}
+
+		// get the downloaded bytes by request id
+		var buf []byte
+		if err := chromedp.Run(ctx,
+			chromedp.ActionFunc(func(ctx context.Context) (err error) {
+				buf, err = network.GetResponseBody(requestID).Do(ctx)
+				return err
+			})); err != nil {
+			return "", "", "", err
+		}
+
+		if err := ioutil.WriteFile(guidPath, buf, os.ModePerm); err != nil {
+			return "", "", "", err
+		}
+	}
 
 	return suggested, guid, newURL, nil
 }

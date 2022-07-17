@@ -5,6 +5,7 @@ go 1.18
 require (
 	github.com/chromedp/cdproto v0.0.0-20220629234738-4cfc9cdeeb92
 	github.com/chromedp/chromedp v0.8.2
+	github.com/google/uuid v1.3.0
 )
 
 require (
