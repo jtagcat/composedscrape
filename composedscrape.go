@@ -18,12 +18,16 @@ func NewScraper(extraAllocatorOpts ...chromedp.ExecAllocatorOption) *Scraper {
 
 	allocCtx, _ := chromedp.NewExecAllocator(ctx, opts...)
 	return &Scraper{
-		ctx: allocCtx,
+		ctx:            allocCtx,
+		downloadsQueue: make(chan bool, downloadsMaxActive),
 	}
 }
 
 type Scraper struct {
 	Cookies []*network.CookieParam // required: Name, Value, Domain: ".ope.ee"
 
-	ctx context.Context
+	ctx            context.Context
+	downloadsQueue chan bool
 }
+
+const downloadsMaxActive = 10

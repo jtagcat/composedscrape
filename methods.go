@@ -50,8 +50,18 @@ func (s *Scraper) Get(url, sel string) (_ *goquery.Selection, newURL string, _ e
 }
 
 // based on https://github.com/chromedp/examples/blob/3384adb2158f6df7e6a48458875a3a5f24aea0c3/download_file/main.go
-// BUG: github issues says 10 or 50 downloads per second is limit, no idea what happens when limit is reached though
 func (s *Scraper) DownloadFile(urlstr, outdir string, timeout time.Duration) (suggested, filename, newURL string, _ error) {
+	//## block until we take a spot in the queue or parent ctx cancelled
+	select {
+	case <-s.ctx.Done():
+		return "", "", "", context.Canceled
+	case s.downloadsQueue <- false: // false is placeholder
+
+	}
+	defer func() {
+		<-s.downloadsQueue // leave queue
+	}()
+
 	ctx, cancel := chromedp.NewContext(s.ctx)
 	defer cancel()
 
@@ -61,7 +71,7 @@ func (s *Scraper) DownloadFile(urlstr, outdir string, timeout time.Duration) (su
 
 	done := make(chan string, 1)
 
-	// handle download event
+	//## handle download event
 	var requestID network.RequestID
 	chromedp.ListenTarget(ctx, func(v interface{}) {
 		switch ev := v.(type) {
@@ -88,6 +98,7 @@ func (s *Scraper) DownloadFile(urlstr, outdir string, timeout time.Duration) (su
 		}
 	})
 
+	//## direct chrome interaction
 	actions := []chromedp.Action{
 		browser.SetDownloadBehavior(browser.SetDownloadBehaviorBehaviorAllowAndName).
 			WithDownloadPath(outdir).
@@ -110,7 +121,8 @@ func (s *Scraper) DownloadFile(urlstr, outdir string, timeout time.Duration) (su
 
 	guid := <-done // blocks
 
-	if guid == "" { // opt a: browser rendered, not direct download
+	//## opt a: if browser rendered and is not direct donwload (eg. png)
+	if guid == "" {
 		// emulate a guid manually
 		var guidPath string
 		for {
