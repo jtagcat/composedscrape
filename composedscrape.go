@@ -11,18 +11,20 @@ type ScraperOpts struct {
 	Executable string
 }
 
-func NewScraper(extraAllocatorOpts ...chromedp.ExecAllocatorOption) *Scraper {
+// populates internal values on Scraper
+func NewScraper(raw *Scraper, extraAllocatorOpts ...chromedp.ExecAllocatorOption) *Scraper {
 	ctx := context.Background() // to be implemented
 	opts := chromedp.DefaultExecAllocatorOptions[:]
 	opts = append(opts, extraAllocatorOpts...)
 
 	allocCtx, _ := chromedp.NewExecAllocator(ctx, opts...)
-	return &Scraper{
-		ctx:            allocCtx,
-		downloadsQueue: make(chan bool, downloadsMaxActive),
-	}
+	raw.ctx = allocCtx
+
+	raw.downloadsQueue = make(chan bool, downloadsMaxActive)
+	return raw
 }
 
+// use NewScraper to initialize internal values
 type Scraper struct {
 	Cookies []*network.CookieParam // required: Name, Value, Domain: ".ope.ee"
 

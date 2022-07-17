@@ -8,8 +8,7 @@ import (
 )
 
 func TestGet(t *testing.T) {
-	s := cs.NewScraper()
-	// s.Executable = "chromium"
+	s := cs.NewScraper(&cs.Scraper{})
 	nodes, _, err := s.Get("https://www.c7.ee/", "document")
 	assert.Nil(t, err)
 	print(nodes)
