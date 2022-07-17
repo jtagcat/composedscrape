@@ -2,6 +2,7 @@ package composedscrape
 
 import (
 	"context"
+	"time"
 
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/chromedp"
@@ -26,8 +27,8 @@ func NewScraper(raw *Scraper, extraAllocatorOpts ...chromedp.ExecAllocatorOption
 
 // use NewScraper to initialize internal values
 type Scraper struct {
-	Cookies []*network.CookieParam // required: Name, Value, Domain: ".ope.ee"
-
+	Cookies        []*network.CookieParam // required: Name, Value, Domain: ".ope.ee"
+	Timeout        time.Duration          // 0: disabled
 	ctx            context.Context
 	downloadsQueue chan bool
 }

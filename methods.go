@@ -7,7 +7,6 @@ import (
 	"os"
 	"path"
 	"strings"
-	"time"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/chromedp/cdproto/browser"
@@ -20,6 +19,11 @@ import (
 func (s *Scraper) Get(url, sel string) (_ *goquery.Selection, newURL string, _ error) { // by func(*chromedp.Selector)
 	ctx, cancel := chromedp.NewContext(s.ctx)
 	defer cancel()
+
+	if s.Timeout != 0 {
+		ctx, cancel = context.WithTimeout(ctx, s.Timeout)
+		defer cancel()
+	}
 
 	var gotHtml string
 	actions := []chromedp.Action{
@@ -50,7 +54,8 @@ func (s *Scraper) Get(url, sel string) (_ *goquery.Selection, newURL string, _ e
 }
 
 // based on https://github.com/chromedp/examples/blob/3384adb2158f6df7e6a48458875a3a5f24aea0c3/download_file/main.go
-func (s *Scraper) DownloadFile(urlstr, outdir string, timeout time.Duration) (suggested, filename, newURL string, _ error) {
+// timeout: 0 to disable
+func (s *Scraper) DownloadFile(urlstr, outdir string) (suggested, filename, newURL string, _ error) {
 	//## block until we take a spot in the queue or parent ctx cancelled
 	select {
 	case <-s.ctx.Done():
@@ -65,9 +70,10 @@ func (s *Scraper) DownloadFile(urlstr, outdir string, timeout time.Duration) (su
 	ctx, cancel := chromedp.NewContext(s.ctx)
 	defer cancel()
 
-	// create a timeout as a safety net to prevent any infinite wait loops
-	ctx, cancel = context.WithTimeout(ctx, timeout)
-	defer cancel()
+	if s.Timeout != 0 {
+		ctx, cancel = context.WithTimeout(ctx, s.Timeout)
+		defer cancel()
+	}
 
 	done := make(chan string, 1)
 
