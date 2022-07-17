@@ -13,9 +13,12 @@ type ScraperOpts struct {
 	Executable string
 }
 
-func NewScraper() *Scraper {
+func NewScraper(extraAllocatorOpts ...chromedp.ExecAllocatorOption) *Scraper {
 	ctx := context.Background() // to be implemented
-	allocCtx, _ := chromedp.NewExecAllocator(ctx, chromedp.DefaultExecAllocatorOptions[:]...)
+	opts := chromedp.DefaultExecAllocatorOptions[:]
+	opts = append(opts, extraAllocatorOpts...)
+
+	allocCtx, _ := chromedp.NewExecAllocator(ctx, opts...)
 	return &Scraper{
 		ctx: allocCtx,
 	}
