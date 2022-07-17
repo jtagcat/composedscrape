@@ -2,7 +2,6 @@ package composedscrape
 
 import (
 	"encoding/json"
-	"errors"
 	"net/url"
 	"os"
 	"path"
@@ -25,32 +24,56 @@ func JsonToFile(filename, indent string, object interface{}) error {
 	return je.Encode(object)
 }
 
-var errorTooManyAbsolute = errors.New("cannot join more than 2 absolute paths")
-
-// TODO: BUG:? is mode even needed? docs?
 // k8s.io/helm/pkg/urlutil
-func UrlJoin(baseURL string, paths ...string) (string, error) {
+// mod: supports // and /
+// in case of multiple absolute paths, last is used
+func URLJoin(baseURL string, paths ...string) (string, error) {
+	// mod:
+	// base is replaced by first with //
+	var newBase int
+	for i, p := range paths {
+		if strings.HasPrefix(p, "//") {
+			newBase = i
+		}
+	}
+
 	u, err := url.Parse(baseURL)
 	if err != nil {
 		return "", err
 	}
+	if newBase != 0 {
+		paths = paths[newBase+1:]
 
-	// mod:
-	if strings.HasPrefix(paths[0], "/") {
-		for _, u := range paths[1:] {
-			if strings.HasPrefix(u, "/") {
-				return "", errorTooManyAbsolute
-			}
+		old := u
+		u, err = url.Parse(paths[newBase])
+		if err != nil {
+			return "", err
 		}
 
-		u.Path = paths[0]
-		return u.String(), nil
+		u.Scheme = old.Scheme
+		if u.User == nil {
+			u.User = old.User
+		}
+	}
+
+	// mod:
+	// allow rooting to domain with /
+	var absPath int
+	for i, p := range paths {
+		if strings.HasPrefix(p, "/") {
+			absPath = i
+		}
 	}
 
 	// We want path instead of filepath because path always uses /.
-	all := []string{u.Path}
-	all = append(all, paths...)
-	u.Path = path.Join(all...)
+	if absPath != 0 {
+		u.Path = path.Join(paths[absPath:]...)
+	} else {
+		all := []string{u.Path}
+		all = append(all, paths...)
+		u.Path = path.Join(all...)
+	}
+
 	return u.String(), nil
 }
 
