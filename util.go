@@ -101,3 +101,10 @@ func RawEach(s *goquery.Selection) (a []*goquery.Selection) {
 	})
 	return a
 }
+
+func RecursiveChildFiltered(s *goquery.Selection, filters ...string) *goquery.Selection {
+	for _, f := range filters {
+		s = s.ChildrenFiltered(f)
+	}
+	return s
+}
