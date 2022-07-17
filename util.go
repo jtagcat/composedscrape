@@ -30,7 +30,7 @@ func JsonToFile(filename, indent string, object interface{}) error {
 func URLJoin(baseURL string, paths ...string) (string, error) {
 	// mod:
 	// base is replaced by first with //
-	var newBase int
+	newBase := -1
 	for i, p := range paths {
 		if strings.HasPrefix(p, "//") {
 			newBase = i
@@ -41,9 +41,7 @@ func URLJoin(baseURL string, paths ...string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if newBase != 0 {
-		paths = paths[newBase+1:]
-
+	if newBase > -1 {
 		old := u
 		u, err = url.Parse(paths[newBase])
 		if err != nil {
@@ -54,11 +52,13 @@ func URLJoin(baseURL string, paths ...string) (string, error) {
 		if u.User == nil {
 			u.User = old.User
 		}
+
+		paths = paths[newBase+1:]
 	}
 
 	// mod:
 	// allow rooting to domain with /
-	var absPath int
+	absPath := -1
 	for i, p := range paths {
 		if strings.HasPrefix(p, "/") {
 			absPath = i
@@ -66,7 +66,7 @@ func URLJoin(baseURL string, paths ...string) (string, error) {
 	}
 
 	// We want path instead of filepath because path always uses /.
-	if absPath != 0 {
+	if absPath > -1 {
 		u.Path = path.Join(paths[absPath:]...)
 	} else {
 		all := []string{u.Path}
