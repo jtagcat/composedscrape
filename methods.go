@@ -17,6 +17,11 @@ import (
 
 // sel: goquery selector
 func (s *Scraper) Get(url, sel string) (_ *goquery.Selection, newURL string, _ error) { // by func(*chromedp.Selector)
+	if err := s.limitLock(); err != nil {
+		return nil, "", err
+	}
+	defer s.limitUnlock()
+
 	ctx, cancel := chromedp.NewContext(s.ctx)
 	defer cancel()
 
@@ -56,15 +61,20 @@ func (s *Scraper) Get(url, sel string) (_ *goquery.Selection, newURL string, _ e
 // based on https://github.com/chromedp/examples/blob/3384adb2158f6df7e6a48458875a3a5f24aea0c3/download_file/main.go
 // timeout: 0 to disable
 func (s *Scraper) DownloadFile(urlstr, outdir string) (suggested, filename, newURL string, _ error) {
-	//## block until we take a spot in the queue or parent ctx cancelled
+	//## block until we take a spot in both queues or parent ctx cancelled
+	if err := s.limitLock(); err != nil {
+		return "", "", "", err
+	}
+	defer s.limitUnlock()
+
 	select {
 	case <-s.ctx.Done():
 		return "", "", "", context.Canceled
-	case s.downloadsQueue <- false: // false is placeholder
+	case s.downloadsLimit <- false: // false is placeholder
 
 	}
 	defer func() {
-		<-s.downloadsQueue // leave queue
+		<-s.downloadsLimit // leave queue
 	}()
 
 	ctx, cancel := chromedp.NewContext(s.ctx)
